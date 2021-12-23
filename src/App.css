@@ -36,3 +36,16 @@
     transform: rotate(360deg);
   }
 }
+
+#root {
+  height: 100vh;
+  width: 100vw;
+}
+
+.grid-template-row-auto-1fr {
+  grid-template-rows: auto 1fr;
+}
+
+.grid-template-col-1fr-auto {
+  grid-template-columns: 1fr auto;
+}
