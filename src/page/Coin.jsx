@@ -1,10 +1,13 @@
 import React from "react";
 import { useParams } from "react-router-dom";
 import Header from "../component/Header";
+import LineChartCoin from "../component/LineChartCoin";
+const timeFrames = ["1Y", "200D", "60D", "30D", "14D", "7D"];
 const Coin = () => {
   const params = useParams();
   const [data, setData] = React.useState(null);
-
+  const [selectedTimeFrame, setSelectedTimeFrame] = React.useState(0);
+  const allMarketData = React.useRef([]);
   function numberWithCommas(x) {
     if (x === undefined || x === null) return "0";
     var str = x.toString().split(".");
@@ -19,8 +22,26 @@ const Coin = () => {
   React.useEffect(() => {
     fetch("https://api.coingecko.com/api/v3/coins/" + params.id)
       .then((response) => response.json())
-      .then((data) => setData(data));
+      .then((data) => {
+        setData(data);
+        fetch(
+          "https://api.coingecko.com/api/v3/coins/" +
+            params.id +
+            "/market_chart?vs_currency=usd&days=365"
+        )
+          .then((response) => response.json())
+          .then((data) => {
+            var prices = [];
+            data.prices.forEach((item) => {
+              prices.push({ Date: item[0], Price: item[1] });
+            });
+            allMarketData.current = prices;
+            if (selectedTimeFrame != 0) setSelectedTimeFrame(0);
+            setDailyData(prices);
+          });
+      });
   }, [params.id]);
+  const [dailyData, setDailyData] = React.useState(null);
 
   const getLoadingDiv = () => {
     return (
@@ -139,6 +160,90 @@ const Coin = () => {
     </div>
   );
 
+  const getAlphaByTime = () => (
+    <div className="p-2">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 p-1">
+        <div className="flex border-b pb-2 px-2">
+          <div className="flex-grow">24H</div>
+          <div>{data.market_data.price_change_percentage_24h + "%"}</div>
+        </div>
+        <div className="flex border-b pb-2 px-2">
+          <div className="flex-grow">7D</div>
+          <div>{data.market_data.price_change_percentage_7d + "%"}</div>
+        </div>{" "}
+        <div className="flex border-b pb-2 px-2">
+          <div className="flex-grow">14D</div>
+          <div>{data.market_data.price_change_percentage_14d + "%"}</div>
+        </div>
+        <div className="flex border-b pb-2 px-2">
+          <div className="flex-grow">30D</div>
+          <div>{data.market_data.price_change_percentage_30d + "%"}</div>
+        </div>
+        <div className="flex border-b pb-2 px-2">
+          <div className="flex-grow">60D</div>
+          <div>{data.market_data.price_change_percentage_60d + "%"}</div>
+        </div>
+        <div className="flex border-b pb-2 px-2">
+          <div className="flex-grow">200D</div>
+          <div>{data.market_data.price_change_percentage_200d + "%"}</div>
+        </div>
+        <div className="flex border-b pb-2 px-2">
+          <div className="flex-grow">1Y</div>
+          <div>{data.market_data.price_change_percentage_1y + "%"}</div>
+        </div>{" "}
+        <div className="flex border-b pb-2 px-2">
+          <div className="flex-grow">Market Cap Change</div>
+          <div>{data.market_data.market_cap_change_percentage_24h + "%"}</div>
+        </div>
+      </div>
+    </div>
+  );
+
+  const getTimeFrameSelectors = () => (
+    <div className="border-2 rounded w-fit float-right mx-3">
+      {timeFrames.map((timeFrame, index) => {
+        return (
+          <div
+            key={timeFrame}
+            className={
+              "inline-block border px-2 cursor-pointer " +
+              (selectedTimeFrame == index ? "bg-gray-300" : "")
+            }
+            onClick={(e) => {
+              if (index == selectedTimeFrame) return;
+              let sliceIndex = 365;
+              switch (index) {
+                case 1:
+                  sliceIndex = 200;
+                  break;
+                case 2:
+                  sliceIndex = 60;
+                  break;
+                case 3:
+                  sliceIndex = 30;
+                  break;
+                case 4:
+                  sliceIndex = 14;
+                  break;
+                case 5:
+                  sliceIndex = 7;
+                  break;
+              }
+              setSelectedTimeFrame(index);
+              setDailyData(
+                allMarketData.current.slice(
+                  allMarketData.current.length - sliceIndex
+                )
+              );
+            }}
+          >
+            {timeFrame}
+          </div>
+        );
+      })}
+    </div>
+  );
+
   if (data == null)
     return (
       <div className="grid h-full grid-template-row-auto-1fr">
@@ -156,6 +261,15 @@ const Coin = () => {
           {getRangeBar()}
           {getMarketData()}
           {getDescription()}
+          <div className="p-2">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 p-1">
+              <div>
+                <div style={{ height: 35 }}>{getTimeFrameSelectors()}</div>
+                <LineChartCoin data={dailyData} />
+              </div>
+              {getAlphaByTime()}
+            </div>
+          </div>
         </div>
       </div>
     </div>
